@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Jalan DIY - Professional Edition</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        /* --- TAMPILAN UTAMA: MODE TERANG --- */
+        :root {
+            --bg: #ffffff;
+            --header-bg: #005e95; /* Biru Esri */
+            --sidebar-bg: #f8f9fa;
+            --text-header: #ffffff;
+            --text-sidebar: #212529;
+            --accent: #e67e22; /* Orange Utama */
+            --border: #ced4da;
+            --shadow: rgba(0,0,0,0.1);
+        }
+
+        /* --- TAMPILAN KEDUA: MODE GELAP --- */
+        [data-theme="dark"] {
+            --bg: #0a0a0a;
+            --header-bg: #141414;
+            --sidebar-bg: #111111;
+            --text-header: #ffffff;
+            --text-sidebar: #e0e0e0;
+            --accent: #ff0000; /* Merah untuk Mode Gelap */
+            --border: #333333;
+            --shadow: rgba(0,0,0,0.5);
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            transition: background 0.3s ease;
+            overflow: hidden;
+        }
+
+        header {
+            height: 60px;
+            background-color: var(--header-bg);
+            color: var(--text-header);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 3px solid var(--accent);
+            justify-content: space-between;
+            box-shadow: 0 2px 10px var(--shadow);
+            z-index: 2000;
+            transition: all 0.3s ease;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 320px;
+            background-color: var(--sidebar-bg);
+            color: var(--text-sidebar);
+            padding: 25px;
+            border-right: 2px solid var(--border); 
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            box-shadow: 4px 0 15px var(--shadow); 
+        }
+
+        #map {
+            flex-grow: 1;
+            background: #888;
+        }
+
+        .theme-btn {
+            background: var(--accent);
+            color: #ffffff !important;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            transition: transform 0.2s, background 0.3s;
+        }
+        
+        .theme-btn:hover { opacity: 0.9; }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .line-sample {
+            height: 6px; width: 35px;
+            margin-right: 15px;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .chart-container {
+            margin-top: 30px; 
+            padding-top: 25px;
+            border-top: 2px solid var(--border); 
+            width: 100%;
+            height: 25vh; 
+            min-height: 200px;
+            position: relative;
+        }
+
+        .stat-box {
+            padding: 20px; 
+            background: rgba(128,128,128,0.05); 
+            border-radius: 12px; 
+            border: 1px solid var(--border);
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        #total-count {
+            margin: 8px 0 0 0; 
+            color: var(--accent);
+            font-size: 2.5rem; 
+            font-weight: 800;
+            transition: color 0.3s ease;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #fff;
+            color: #333;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
+            #map { height: 50vh; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center;">
+            <span style="font-weight: 800; letter-spacing: 2px; font-size: 1.1rem;">KONDISI JALAN DAERAH ISTIMEWA YOGYAKARTA 2025-II</span>
+        </div>
+        <button class="theme-btn" onclick="toggleTheme()">SWITCH THEME</button>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <h3 style="margin-top:0; font-size: 1rem; opacity: 0.9;">Legenda Kondisi</h3>
+            <div id="legend"></div>
+
+            <div class="stat-box">
+                <small style="opacity:0.7; text-transform: uppercase; font-size: 10px; font-weight: 700;">Total Segmen Jalan:</small>
+                <h2 id="total-count">0</h2>
+            </div>
+
+            <div class="chart-container">
+                <h4 style="margin: 0 0 15px 0; font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; text-align: center;">Statistik Kondisi</h4>
+                <canvas id="conditionChart"></canvas>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Start with LIGHT mode as default
+        let currentTheme = 'light';
+        let rawData, geojsonLayer, myChart;
+
+        const map = L.map('map').setView([-7.7956, 110.3695], 11);
+
+        const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
+        const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
+
+        // Default Tile
+        lightTiles.addTo(map);
+
+        const colorPalette = {
+            dark: { 'Baik': '#00ff00', 'Sedang': '#ffff00', 'Ringan': '#ff9900', 'Berat': '#ff0000' },
+            light: { 'Baik': '#2e7d32', 'Sedang': '#fbc02d', 'Ringan': '#ef6c00', 'Berat': '#c62828' }
+        };
+
+        function getColor(kondisi) {
+            if (!kondisi) return '#888';
+            const k = kondisi.toLowerCase();
+            const p = colorPalette[currentTheme];
+            if (k.includes('baik')) return p['Baik'];
+            if (k.includes('sedang')) return p['Sedang'];
+            if (k.includes('ringan')) return p['Ringan'];
+            if (k.includes('berat')) return p['Berat'];
+            return '#888';
+        }
+
+        function toggleTheme() {
+            currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
+            
+            if (currentTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                map.removeLayer(lightTiles);
+                darkTiles.addTo(map);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                map.removeLayer(darkTiles);
+                lightTiles.addTo(map);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            const p = colorPalette[currentTheme];
+            document.getElementById('legend').innerHTML = `
+                <div class="legend-item"><div class="line-sample" style="background:${p.Baik}"></div> Baik</div>
+                <div class="legend-item"><div class="line-sample" style="background:${p.Sedang}"></div> Sedang</div>
+                <div class="legend-item"><div class="line-sample" style="background:${p.Ringan}"></div> Rusak Ringan</div>
+                <div class="legend-item"><div class="line-sample" style="background:${p.Berat}"></div> Rusak Berat</div>
+            `;
+
+            if (rawData) {
+                renderMap(rawData);
+                renderChart(processData(rawData));
+            }
+        }
+
+        function processData(data) {
+            let counts = { 'Baik': 0, 'Sedang': 0, 'Rusak Ringan': 0, 'Rusak Berat': 0 };
+            data.features.forEach(f => {
+                const k = (f.properties.KONDISI || "").toLowerCase();
+                if (k.includes('baik')) counts['Baik']++;
+                else if (k.includes('sedang')) counts['Sedang']++;
+                else if (k.includes('ringan')) counts['Rusak Ringan']++;
+                else if (k.includes('berat')) counts['Rusak Berat']++;
+            });
+            return counts;
+        }
+
+        function renderMap(data) {
+            if (geojsonLayer) map.removeLayer(geojsonLayer);
+            geojsonLayer = L.geoJSON(data, {
+                style: (f) => ({ color: getColor(f.properties.KONDISI), weight: 5, opacity: 0.8, lineCap: 'round' }),
+                onEachFeature: (f, l) => l.bindPopup(`<b>${f.properties.NAMA || 'Jalan'}</b><br>Kondisi: ${f.properties.KONDISI}`)
+            }).addTo(map);
+        }
+
+        function renderChart(counts) {
+            const ctx = document.getElementById('conditionChart').getContext('2d');
+            const p = colorPalette[currentTheme];
+            const chartCenterTextColor = (currentTheme === 'light') ? '#000000' : '#ffffff';
+            
+            const dataValues = [counts['Baik'], counts['Sedang'], counts['Rusak Ringan'], counts['Rusak Berat']];
+            const total = dataValues.reduce((a, b) => a + b, 0);
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Baik', 'Sedang', 'Rusak Ringan', 'Rusak Berat'],
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: [p.Baik, p.Sedang, p.Ringan, p.Berat],
+                        hoverOffset: 12,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    layout: { padding: 15 },
+                    plugins: { legend: { display: false } }
+                },
+                plugins: [{
+                    beforeDraw: (chart) => {
+                        const { width, height, ctx } = chart;
+                        ctx.restore();
+                        const fontSize = (height / 8).toFixed(0);
+                        ctx.font = `bold ${fontSize}px sans-serif`;
+                        ctx.fillStyle = chartCenterTextColor;
+                        ctx.textBaseline = "middle";
+                        const text = total,
+                            textX = Math.round((width - ctx.measureText(text).width) / 2),
+                            textY = height / 2;
+                        ctx.fillText(text, textX, textY);
+                        ctx.save();
+                    }
+                }]
+            });
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('DIY.geojson');
+                if (!res.ok) throw new Error("File DIY.geojson tidak ditemukan");
+                rawData = await res.json();
+                document.getElementById('total-count').innerText = rawData.features.length;
+                updateUI();
+                if (rawData.features.length > 0) map.fitBounds(geojsonLayer.getBounds());
+            } catch (e) {
+                console.error(e.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
