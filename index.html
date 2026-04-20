@@ -12,11 +12,11 @@
         /* --- TAMPILAN UTAMA: MODE TERANG --- */
         :root {
             --bg: #ffffff;
-            --header-bg: #005e95; /* Biru Esri */
+            --header-bg: #005e95;
             --sidebar-bg: #f8f9fa;
             --text-header: #ffffff;
             --text-sidebar: #212529;
-            --accent: #e67e22; /* Orange Utama */
+            --accent: #e67e22;
             --border: #ced4da;
             --shadow: rgba(0,0,0,0.1);
         }
@@ -28,7 +28,7 @@
             --sidebar-bg: #111111;
             --text-header: #ffffff;
             --text-sidebar: #e0e0e0;
-            --accent: #ff0000; /* Merah untuk Mode Gelap */
+            --accent: #ff0000;
             --border: #333333;
             --shadow: rgba(0,0,0,0.5);
         }
@@ -137,10 +137,31 @@
             transition: color 0.3s ease;
         }
 
+        /* --- Style Popup Modern --- */
         .leaflet-popup-content-wrapper {
             background: #fff;
             color: #333;
-            border-radius: 4px;
+            border-radius: 8px;
+            padding: 5px;
+        }
+        .popup-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        .popup-table td {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        .popup-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: #005e95;
+            margin-bottom: 5px;
+            display: block;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 3px;
         }
 
         @media (max-width: 768px) {
@@ -155,7 +176,7 @@
 
     <header>
         <div style="display:flex; align-items:center;">
-            <span style="font-weight: 800; letter-spacing: 2px; font-size: 1.1rem;">KONDISI JALAN DAERAH ISTIMEWA YOGYAKARTA 2025-II</span>
+            <span style="font-weight: 800; letter-spacing: 1px; font-size: 0.95rem;">KONDISI JALAN DAERAH ISTIMEWA YOGYAKARTA 2025-II</span>
         </div>
         <button class="theme-btn" onclick="toggleTheme()">SWITCH THEME</button>
     </header>
@@ -182,7 +203,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Start with LIGHT mode as default
         let currentTheme = 'light';
         let rawData, geojsonLayer, myChart;
 
@@ -191,7 +211,6 @@
         const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
         const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
 
-        // Default Tile
         lightTiles.addTo(map);
 
         const colorPalette = {
@@ -212,7 +231,6 @@
 
         function toggleTheme() {
             currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
-            
             if (currentTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 map.removeLayer(lightTiles);
@@ -233,11 +251,7 @@
                 <div class="legend-item"><div class="line-sample" style="background:${p.Ringan}"></div> Rusak Ringan</div>
                 <div class="legend-item"><div class="line-sample" style="background:${p.Berat}"></div> Rusak Berat</div>
             `;
-
-            if (rawData) {
-                renderMap(rawData);
-                renderChart(processData(rawData));
-            }
+            if (rawData) { renderMap(rawData); renderChart(processData(rawData)); }
         }
 
         function processData(data) {
@@ -256,7 +270,26 @@
             if (geojsonLayer) map.removeLayer(geojsonLayer);
             geojsonLayer = L.geoJSON(data, {
                 style: (f) => ({ color: getColor(f.properties.KONDISI), weight: 5, opacity: 0.8, lineCap: 'round' }),
-                onEachFeature: (f, l) => l.bindPopup(`<b>${f.properties.NAMA || 'Jalan'}</b><br>Kondisi: ${f.properties.KONDISI}`)
+                onEachFeature: (f, l) => {
+                    const prop = f.properties;
+                    // MENGAMBIL NAMA DARI LINK_Name
+                    const nama = prop.LINK_NAME || prop.NAMA || 'Tidak Ada Nama';
+                    const kondisi = prop.KONDISI || '-';
+                    const iri = prop.IRI || '-';
+                    const pci = prop.PCI || '-';
+
+                    const popupContent = `
+                        <div style="min-width: 200px;">
+                            <span class="popup-title">${nama}</span>
+                            <table class="popup-table">
+                                <tr><td><b>Kondisi</b></td><td style="color:${getColor(kondisi)}; font-weight:bold;">${kondisi}</td></tr>
+                                <tr><td><b>Nilai IRI</b></td><td>${iri} m/km</td></tr>
+                                <tr><td><b>Nilai PCI</b></td><td>${pci}</td></tr>
+                            </table>
+                        </div>
+                    `;
+                    l.bindPopup(popupContent);
+                }
             }).addTo(map);
         }
 
@@ -264,12 +297,10 @@
             const ctx = document.getElementById('conditionChart').getContext('2d');
             const p = colorPalette[currentTheme];
             const chartCenterTextColor = (currentTheme === 'light') ? '#000000' : '#ffffff';
-            
             const dataValues = [counts['Baik'], counts['Sedang'], counts['Rusak Ringan'], counts['Rusak Berat']];
             const total = dataValues.reduce((a, b) => a + b, 0);
 
             if (myChart) myChart.destroy();
-
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -313,9 +344,7 @@
                 document.getElementById('total-count').innerText = rawData.features.length;
                 updateUI();
                 if (rawData.features.length > 0) map.fitBounds(geojsonLayer.getBounds());
-            } catch (e) {
-                console.error(e.message);
-            }
+            } catch (e) { console.error(e.message); }
         }
 
         init();
