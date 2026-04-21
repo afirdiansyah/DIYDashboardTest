@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Jalan DIY - Professional Edition</title>
+    <title>Dashboard Jalan DIY - Tab Selector Edition</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
-        /* --- TAMPILAN UTAMA: MODE TERANG --- */
+
         :root {
             --bg: #ffffff;
             --header-bg: #005e95;
@@ -18,10 +18,10 @@
             --text-sidebar: #212529;
             --accent: #e67e22;
             --border: #ced4da;
-            --shadow: rgba(0,0,0,0.1);
+            --shadow: rgba(0, 0, 0, 0.1);
+            --tab-inactive: #e9ecef;
         }
 
-        /* --- TAMPILAN KEDUA: MODE GELAP --- */
         [data-theme="dark"] {
             --bg: #0a0a0a;
             --header-bg: #141414;
@@ -30,11 +30,15 @@
             --text-sidebar: #e0e0e0;
             --accent: #ff0000;
             --border: #333333;
-            --shadow: rgba(0,0,0,0.5);
+            --shadow: rgba(0, 0, 0, 0.5);
+            --tab-inactive: #222222;
         }
 
-        body, html {
-            margin: 0; padding: 0; height: 100%;
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             transition: background 0.3s ease;
@@ -65,19 +69,58 @@
             width: 320px;
             background-color: var(--sidebar-bg);
             color: var(--text-sidebar);
-            padding: 25px;
-            border-right: 2px solid var(--border); 
+            padding: 20px;
+            border-right: 2px solid var(--border);
             display: flex;
             flex-direction: column;
             z-index: 1000;
             overflow-y: auto;
             transition: all 0.3s ease;
-            box-shadow: 4px 0 15px var(--shadow); 
+            box-shadow: 4px 0 15px var(--shadow);
         }
 
         #map {
             flex-grow: 1;
             background: #888;
+        }
+
+        /* --- STYLING TAB SELECTOR --- */
+        .layer-tabs {
+            display: flex;
+            background: var(--tab-inactive);
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-sidebar);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .tab-btn.active {
+            background: var(--header-bg);
+            color: white;
+            opacity: 1;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        [data-theme="dark"] .tab-btn.active {
+            background: var(--accent);
+
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
+
         }
 
         .theme-btn {
@@ -90,84 +133,82 @@
             font-weight: bold;
             font-size: 11px;
             letter-spacing: 0.5px;
-            transition: transform 0.2s, background 0.3s;
+            transition: transform 0.2s;
         }
-        
-        .theme-btn:hover { opacity: 0.9; }
 
         .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
-            font-size: 14px;
+            margin-bottom: 10px;
+            font-size: 13px;
             font-weight: 500;
         }
 
         .line-sample {
-            height: 6px; width: 35px;
-            margin-right: 15px;
+            height: 6px;
+            width: 30px;
+            margin-right: 12px;
             border-radius: 3px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
 
         .chart-container {
-            margin-top: 30px; 
-            padding-top: 25px;
-            border-top: 2px solid var(--border); 
-            width: 100%;
-            height: 25vh; 
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid var(--border);
+            height: 25vh;
             min-height: 200px;
-            position: relative;
         }
 
         .stat-box {
-            padding: 20px; 
-            background: rgba(128,128,128,0.05); 
-            border-radius: 12px; 
+            padding: 15px;
+            background: rgba(128, 128, 128, 0.05);
+            border-radius: 12px;
             border: 1px solid var(--border);
-            margin: 20px 0;
+            margin-bottom: 10px;
             text-align: center;
         }
 
         #total-count {
-            margin: 8px 0 0 0; 
+            margin: 5px 0;
             color: var(--accent);
-            font-size: 2.5rem; 
+            font-size: 2.2rem;
             font-weight: 800;
-            transition: color 0.3s ease;
         }
 
-        /* --- Style Popup Modern --- */
-        .leaflet-popup-content-wrapper {
-            background: #fff;
-            color: #333;
-            border-radius: 8px;
-            padding: 5px;
-        }
-        .popup-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-        }
-        .popup-table td {
-            padding: 4px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 13px;
-        }
         .popup-title {
             font-weight: bold;
             font-size: 14px;
             color: #005e95;
-            margin-bottom: 5px;
             display: block;
             border-bottom: 2px solid var(--accent);
-            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+
+        .popup-table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+        }
+
+        .popup-table td {
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
         }
 
         @media (max-width: 768px) {
-            .main-container { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
-            #map { height: 50vh; }
+            .main-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+            }
+
+            #map {
+                height: 50vh;
+            }
         }
     </style>
 </head>
@@ -175,24 +216,30 @@
 <body>
 
     <header>
-        <div style="display:flex; align-items:center;">
-            <span style="font-weight: 800; letter-spacing: 1px; font-size: 0.95rem;">KONDISI JALAN DAERAH ISTIMEWA YOGYAKARTA 2025-II</span>
-        </div>
+        <span style="font-weight: 800; letter-spacing: 1px; font-size: 0.9rem;">KONDISI JALAN DIY (2024-2025)</span>
         <button class="theme-btn" onclick="toggleTheme()">SWITCH THEME</button>
     </header>
 
     <div class="main-container">
         <div class="sidebar">
-            <h3 style="margin-top:0; font-size: 1rem; opacity: 0.9;">Legenda Kondisi</h3>
+            <div class="layer-tabs">
+                <button onclick="switchLayer('2025')" id="tab-2025" class="tab-btn active">TAHUN 2025</button>
+                <button onclick="switchLayer('2024')" id="tab-2024" class="tab-btn">TAHUN 2024</button>
+            </div>
+
+            <h3 style="margin-top:0; font-size: 0.9rem; opacity: 0.8;">Legenda Kondisi</h3>
             <div id="legend"></div>
 
             <div class="stat-box">
-                <small style="opacity:0.7; text-transform: uppercase; font-size: 10px; font-weight: 700;">Total Segmen Jalan:</small>
+                <small style="opacity:0.7; text-transform: uppercase; font-size: 10px; font-weight: 700;"
+                    id="year-label">Total Segmen (2025):</small>
                 <h2 id="total-count">0</h2>
             </div>
 
             <div class="chart-container">
-                <h4 style="margin: 0 0 15px 0; font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; text-align: center;">Statistik Kondisi</h4>
+                <h4
+                    style="margin: 0 0 10px 0; font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; text-align: center;">
+                    Statistik Kondisi</h4>
                 <canvas id="conditionChart"></canvas>
             </div>
         </div>
@@ -204,13 +251,12 @@
 
     <script>
         let currentTheme = 'light';
-        let rawData, geojsonLayer, myChart;
+        let activeYear = '2025';
+        let myChart, dataLayers = {}, rawDataStore = {};
 
         const map = L.map('map').setView([-7.7956, 110.3695], 11);
-
         const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
         const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' });
-
         lightTiles.addTo(map);
 
         const colorPalette = {
@@ -218,10 +264,15 @@
             light: { 'Baik': '#2e7d32', 'Sedang': '#fbc02d', 'Ringan': '#ef6c00', 'Berat': '#c62828' }
         };
 
-        function getColor(kondisi) {
+        function getProp(props, target) {
+            const key = Object.keys(props).find(k => k.toLowerCase() === target.toLowerCase());
+            return key ? props[key] : null;
+        }
+
+        function getColor(kondisi, theme) {
             if (!kondisi) return '#888';
-            const k = kondisi.toLowerCase();
-            const p = colorPalette[currentTheme];
+            const k = kondisi.toString().toLowerCase();
+            const p = colorPalette[theme];
             if (k.includes('baik')) return p['Baik'];
             if (k.includes('sedang')) return p['Sedang'];
             if (k.includes('ringan')) return p['Ringan'];
@@ -229,21 +280,40 @@
             return '#888';
         }
 
-        function toggleTheme() {
-            currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
-            if (currentTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                map.removeLayer(lightTiles);
-                darkTiles.addTo(map);
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-                map.removeLayer(darkTiles);
-                lightTiles.addTo(map);
-            }
-            updateUI();
+        function createGeoLayer(data, theme) {
+            return L.geoJSON(data, {
+                style: (f) => ({ color: getColor(getProp(f.properties, 'KONDISI'), theme), weight: 5, opacity: 0.8, lineCap: 'round' }),
+                onEachFeature: (f, l) => {
+                    const p = f.properties;
+                    l.bindPopup(`
+                        <span class="popup-title">${getProp(p, 'LINK_NAME') || getProp(p, 'NAMA') || 'Jalan'}</span>
+                        <table class="popup-table">
+                            <tr><td><b>Kondisi</b></td><td style="color:${getColor(getProp(p, 'KONDISI'), theme)};font-weight:bold">${getProp(p, 'KONDISI')}</td></tr>
+                            <tr><td><b>IRI</b></td><td>${getProp(p, 'IRI') || '-'}</td></tr>
+                            <tr><td><b>PCI</b></td><td>${getProp(p, 'PCI') || '-'}</td></tr>
+                        </table>
+                    `);
+                }
+            });
         }
 
-        function updateUI() {
+
+        function switchLayer(year) {
+            activeYear = year;
+
+            // Update Tombol UI
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${year}`).classList.add('active');
+
+            // Ganti Layer di Peta
+            Object.keys(dataLayers).forEach(y => map.removeLayer(dataLayers[y]));
+            dataLayers[year].addTo(map);
+
+  
+            updateUI(rawDataStore[year], year);
+        }
+
+        function updateUI(data, year) {
             const p = colorPalette[currentTheme];
             document.getElementById('legend').innerHTML = `
                 <div class="legend-item"><div class="line-sample" style="background:${p.Baik}"></div> Baik</div>
@@ -251,100 +321,84 @@
                 <div class="legend-item"><div class="line-sample" style="background:${p.Ringan}"></div> Rusak Ringan</div>
                 <div class="legend-item"><div class="line-sample" style="background:${p.Berat}"></div> Rusak Berat</div>
             `;
-            if (rawData) { renderMap(rawData); renderChart(processData(rawData)); }
-        }
+            document.getElementById('year-label').innerText = `Total Segmen (${year}):`;
+            document.getElementById('total-count').innerText = data.features.length;
 
-        function processData(data) {
-            let counts = { 'Baik': 0, 'Sedang': 0, 'Rusak Ringan': 0, 'Rusak Berat': 0 };
+            let counts = { 'Baik': 0, 'Sedang': 0, 'Ringan': 0, 'Berat': 0 };
             data.features.forEach(f => {
-                const k = (f.properties.KONDISI || "").toLowerCase();
+                const k = (getProp(f.properties, 'KONDISI') || "").toLowerCase();
                 if (k.includes('baik')) counts['Baik']++;
                 else if (k.includes('sedang')) counts['Sedang']++;
-                else if (k.includes('ringan')) counts['Rusak Ringan']++;
-                else if (k.includes('berat')) counts['Rusak Berat']++;
+                else if (k.includes('ringan')) counts['Ringan']++;
+                else if (k.includes('berat')) counts['Berat']++;
             });
-            return counts;
-        }
 
-        function renderMap(data) {
-            if (geojsonLayer) map.removeLayer(geojsonLayer);
-            geojsonLayer = L.geoJSON(data, {
-                style: (f) => ({ color: getColor(f.properties.KONDISI), weight: 5, opacity: 0.8, lineCap: 'round' }),
-                onEachFeature: (f, l) => {
-                    const prop = f.properties;
-                    // MENGAMBIL NAMA DARI LINK_Name
-                    const nama = prop.LINK_NAME || prop.NAMA || 'Tidak Ada Nama';
-                    const kondisi = prop.KONDISI || '-';
-                    const iri = prop.IRI || '-';
-                    const pci = prop.PCI || '-';
-
-                    const popupContent = `
-                        <div style="min-width: 200px;">
-                            <span class="popup-title">${nama}</span>
-                            <table class="popup-table">
-                                <tr><td><b>Kondisi</b></td><td style="color:${getColor(kondisi)}; font-weight:bold;">${kondisi}</td></tr>
-                                <tr><td><b>Nilai IRI</b></td><td>${iri} m/km</td></tr>
-                                <tr><td><b>Nilai PCI</b></td><td>${pci}</td></tr>
-                            </table>
-                        </div>
-                    `;
-                    l.bindPopup(popupContent);
-                }
-            }).addTo(map);
+            renderChart(counts);
         }
 
         function renderChart(counts) {
             const ctx = document.getElementById('conditionChart').getContext('2d');
+            const centerColor = (currentTheme === 'light') ? '#000' : '#fff';
             const p = colorPalette[currentTheme];
-            const chartCenterTextColor = (currentTheme === 'light') ? '#000000' : '#ffffff';
-            const dataValues = [counts['Baik'], counts['Sedang'], counts['Rusak Ringan'], counts['Rusak Berat']];
-            const total = dataValues.reduce((a, b) => a + b, 0);
+            const total = counts.Baik + counts.Sedang + counts.Ringan + counts.Berat;
 
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Baik', 'Sedang', 'Rusak Ringan', 'Rusak Berat'],
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: [p.Baik, p.Sedang, p.Ringan, p.Berat],
-                        hoverOffset: 12,
-                        borderWidth: 0
-                    }]
+                    labels: ['Baik', 'Sedang', 'Ringan', 'Berat'],
+                    datasets: [{ data: [counts.Baik, counts.Sedang, counts.Ringan, counts.Berat], backgroundColor: [p.Baik, p.Sedang, p.Ringan, p.Berat], borderWidth: 0 }]
                 },
-                options: {
-                    maintainAspectRatio: false,
-                    cutout: '72%',
-                    layout: { padding: 15 },
-                    plugins: { legend: { display: false } }
-                },
+                options: { maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false } } },
                 plugins: [{
                     beforeDraw: (chart) => {
                         const { width, height, ctx } = chart;
                         ctx.restore();
-                        const fontSize = (height / 8).toFixed(0);
-                        ctx.font = `bold ${fontSize}px sans-serif`;
-                        ctx.fillStyle = chartCenterTextColor;
+                        ctx.font = `bold ${(height / 8).toFixed(0)}px sans-serif`;
+                        ctx.fillStyle = centerColor;
                         ctx.textBaseline = "middle";
-                        const text = total,
-                            textX = Math.round((width - ctx.measureText(text).width) / 2),
-                            textY = height / 2;
-                        ctx.fillText(text, textX, textY);
+                        const text = total || 0;
+                        ctx.fillText(text, (width - ctx.measureText(text).width) / 2, height / 2);
                         ctx.save();
                     }
                 }]
             });
         }
 
+        function toggleTheme() {
+            currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
+            if (currentTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                map.removeLayer(lightTiles); darkTiles.addTo(map);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                map.removeLayer(darkTiles); lightTiles.addTo(map);
+            }
+
+            // Re-render data dengan tema baru
+            Object.keys(rawDataStore).forEach(y => {
+                const wasActive = map.hasLayer(dataLayers[y]);
+                if (wasActive) map.removeLayer(dataLayers[y]);
+                dataLayers[y] = createGeoLayer(rawDataStore[y], currentTheme);
+                if (wasActive) dataLayers[y].addTo(map);
+            });
+
+            updateUI(rawDataStore[activeYear], activeYear);
+        }
+
         async function init() {
             try {
-                const res = await fetch('DIY.geojson');
-                if (!res.ok) throw new Error("File DIY.geojson tidak ditemukan");
-                rawData = await res.json();
-                document.getElementById('total-count').innerText = rawData.features.length;
-                updateUI();
-                if (rawData.features.length > 0) map.fitBounds(geojsonLayer.getBounds());
-            } catch (e) { console.error(e.message); }
+                const [res25, res24] = await Promise.all([fetch('DIY.geojson'), fetch('DIY24.geojson')]);
+                rawDataStore["2025"] = await res25.json();
+                rawDataStore["2024"] = await res24.json();
+
+                dataLayers["2025"] = createGeoLayer(rawDataStore["2025"], currentTheme);
+                dataLayers["2024"] = createGeoLayer(rawDataStore["2024"], currentTheme);
+
+                dataLayers["2025"].addTo(map);
+                updateUI(rawDataStore["2025"], "2025");
+                map.fitBounds(dataLayers["2025"].getBounds());
+            } catch (e) { console.error("Data error!", e); }
         }
 
         init();
