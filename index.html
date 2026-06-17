@@ -173,6 +173,7 @@
         };
 
         function getProp(props, target) {
+            if (!props) return null;
             const key = Object.keys(props).find(k => k.toLowerCase() === target.toLowerCase());
             return key ? props[key] : null;
         }
@@ -200,9 +201,12 @@
                     const p = f.properties;
                     
                     l.on('click', function(e) {
-                        // 1. Reset Highlight Sebelumnya
-                        if (lastClickedLayer) {
-                            layerGroup.resetStyle(lastClickedLayer);
+                        // Mencegah trigger map.on('click') agar tidak langsung ter-reset
+                        L.DomEvent.stopPropagation(e);
+
+                        // 1. Reset Highlight Sebelumnya jika ada
+                        if (lastClickedLayer && dataLayers[activeYear]) {
+                            dataLayers[activeYear].resetStyle(lastClickedLayer);
                         }
 
                         // 2. Set Highlight Baru
@@ -224,7 +228,7 @@
                     l.bindPopup(`
                         <span class="popup-title">${getProp(p, 'LINK_NAME') || getProp(p, 'NAMA') || 'Jalan'}</span>
                         <table class="popup-table">
-                            <tr><td><b>Kondisi</b></td><td style="color:${getColor(getProp(p, 'KONDISI'), theme)};font-weight:bold">${getProp(p, 'KONDISI')}</td></tr>
+                            <tr><td><b>Kondisi</b></td><td style="color:${getColor(getProp(p, 'KONDISI'), theme)};font-weight:bold">${getProp(p, 'KONDISI') || '-'}</td></tr>
                             <tr><td><b>IRI</b></td><td>${getProp(p, 'IRI') || '-'}</td></tr>
                             <tr><td><b>PCI</b></td><td>${getProp(p, 'PCI') || '-'}</td></tr>
                         </table>
@@ -234,28 +238,42 @@
             return layerGroup;
         }
 
-        // Reset highlight kalau klik peta kosong
+        // Reset highlight kalau klik area kosong di peta
         map.on('click', function(e) {
-            if (lastClickedLayer && e.originalEvent.target.id === 'map') {
+            if (lastClickedLayer && dataLayers[activeYear]) {
                 dataLayers[activeYear].resetStyle(lastClickedLayer);
                 lastClickedLayer = null;
             }
         });
 
         function switchLayer(year) {
+            if (!rawDataStore[year]) return;
+            
             activeYear = year;
             lastClickedLayer = null; 
             
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${year}`).classList.add('active');
 
-            Object.keys(dataLayers).forEach(y => map.removeLayer(dataLayers[y]));
+            Object.keys(dataLayers).forEach(y => {
+                if (map.hasLayer(dataLayers[y])) {
+                    map.removeLayer(dataLayers[y]);
+                }
+            });
+            
             dataLayers[year].addTo(map);
+
+            // Otomatis arahkan kamera peta ke cakupan data tahun yang dipilih
+            if (dataLayers[year].getBounds().isValid()) {
+                map.fitBounds(dataLayers[year].getBounds());
+            }
 
             updateUI(rawDataStore[year], year);
         }
 
         function updateUI(data, year) {
+            if (!data || !data.features) return;
+
             const p = colorPalette[currentTheme];
             document.getElementById('legend').innerHTML = `
                 <div class="legend-item"><div class="line-sample" style="background:${p.Baik}"></div> Baik</div>
@@ -331,7 +349,16 @@
 
         async function init() {
             try {
-                const [res25, res24] = await Promise.all([fetch('DIY.geojson'), fetch('DIY24.geojson')]);
+                const [res25, res24] = await Promise.all([
+                    fetch('DIY.geojson').catch(e => null), 
+                    fetch('DIY24.geojson').catch(e => null)
+                ]);
+                
+                if (!res25 || !res24) {
+                    console.error("Gagal memuat salah satu file GeoJSON. Pastikan file berada di folder yang sama.");
+                    return;
+                }
+
                 rawDataStore["2025"] = await res25.json();
                 rawDataStore["2024"] = await res24.json();
 
@@ -340,7 +367,10 @@
 
                 dataLayers["2025"].addTo(map);
                 updateUI(rawDataStore["2025"], "2025");
-                map.fitBounds(dataLayers["2025"].getBounds());
+                
+                if (dataLayers["2025"].getBounds().isValid()) {
+                    map.fitBounds(dataLayers["2025"].getBounds());
+                }
             } catch (e) { console.error("Data error!", e); }
         }
 
